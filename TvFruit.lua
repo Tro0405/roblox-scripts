@@ -67,8 +67,15 @@ local function startFlyInternal()
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.yAxis end
         local speed = CFG.FlySpeed
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then speed *= 2.5 end
-        local target = if move.Magnitude > 0 then move.Unit * speed else Vector3.zero
-        currentVel = currentVel:Lerp(target, if move.Magnitude > 0 then CFG.FlyAccel else CFG.FlyBrake)
+        local target, alpha
+        if move.Magnitude > 0 then
+            target = move.Unit * speed
+            alpha  = CFG.FlyAccel
+        else
+            target = Vector3.zero
+            alpha  = CFG.FlyBrake
+        end
+        currentVel = currentVel:Lerp(target, alpha)
         bodyVel.Velocity = currentVel
         if bodyGyro then
             bodyGyro.CFrame = CFrame.new(Vector3.zero, Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z))
@@ -183,12 +190,14 @@ if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 -- ============================================================
 --                          GUI
 -- ============================================================
-local old = game:GetService("CoreGui"):FindFirstChild("TvFruitGUI")
+local guiParent = (typeof(gethui) == "function" and gethui()) or game:GetService("CoreGui")
+
+local old = guiParent:FindFirstChild("TvFruitGUI")
 if old then old:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TvFruitGUI"; ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Parent = guiParent
 
 -- Main window (520 x 400)
 local Main = Instance.new("Frame")
