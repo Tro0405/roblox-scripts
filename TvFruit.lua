@@ -1,4 +1,4 @@
--- TvFruit - Fly + Noclip + Save Position + Speed Slider
+-- TvFruit - Fly + Noclip + Save Position + Speed Slider + Auto Win
 -- Auto reconnect after respawn
 -- Delta Executor Compatible
 
@@ -12,22 +12,31 @@ local Camera      = workspace.CurrentCamera
 
 -- ============ CONFIG ============
 local CFG = {
-    FlySpeed    = 80,
+    FlySpeed    = 120,
     FlySpeedMin = 10,
     FlySpeedMax = 300,
     FlyAccel    = 0.15,
     FlyBrake    = 0.10,
+    LoopDelay   = 1.5,
+    ArriveRadius = 4,
 }
 -- ================================
 
 local flyEnabled     = false
 local noclipEnabled  = false
 local savedPositions = {}
+local looping        = false
+local loopCount      = 0
+local loopThread     = nil
+local counterLbl     = nil  -- set after GUI build
 
 local currentVel = Vector3.zero
 local bodyVel, bodyGyro
 local flyLoop, noclipLoop
 
+-- ==============================
+--       CHARACTER GETTERS
+-- ==============================
 local function getChar()
     return LocalPlayer.Character
 end
@@ -41,7 +50,7 @@ local function getHumanoid()
 end
 
 -- ==============================
---          FLY ENGINE
+--          FLY ENGINE (manual)
 -- ==============================
 local function stopFlyInternal()
     if flyLoop  then flyLoop:Disconnect();  flyLoop  = nil end
@@ -52,7 +61,6 @@ end
 
 local function startFlyInternal()
     stopFlyInternal()
-
     local rp = getRootPart()
     local hm = getHumanoid()
     if not rp or not hm then return end
@@ -143,8 +151,123 @@ local function onCharacterAdded(newChar)
 end
 
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
+if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
+
+-- ==============================
+--         AUTO WIN ENGINE
+-- ==============================
+local function findWinBlock()
+    local wb = workspace:FindFirstChild("Winblocks")
+    if wb then
+        local b = wb:FindFirstChild("WinBlock16")
+        if b then return b end
+    end
+    return workspace:FindFirstChild("WinBlock16", true)
+end
+
+local function doOneLoop()
+    if not looping then return end
+
+    local rp = getRootPart()
+    local hm = getHumanoid()
+    if not rp or not hm then task.wait(1); return end
+
+    local wb = findWinBlock()
+    if not wb then
+        task.wait(1)
+        return
+    end
+
+    local targetPos = wb.Position + Vector3.new(0, 6, 0)
+
+    -- Stop manual fly engine so bodies don't conflict
+    stopFlyInternal()
+
+    -- Enable noclip to pass through walls
+    startNoclipInternal()
+    hm.PlatformStand = true
+
+    -- Create auto-win fly bodies (local, separate from manual fly)
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+    bv.P        = 1e4
+    bv.Velocity = Vector3.zero
+    bv.Parent   = rp
+
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+    bg.P         = 5e3
+    bg.D         = 100
+    bg.CFrame    = rp.CFrame
+    bg.Parent    = rp
+
+    -- Fly toward WinBlock16
+    while looping do
+        local root = getRootPart()
+        if not root then break end
+        local dist = (root.Position - targetPos).Magnitude
+        if dist < CFG.ArriveRadius then break end
+        local dir   = (targetPos - root.Position).Unit
+        local speed = math.min(CFG.FlySpeed, dist * 3)
+        bv.Velocity = dir * speed
+        task.wait()
+    end
+
+    -- Destroy auto-fly bodies
+    if bv and bv.Parent then bv:Destroy() end
+    if bg and bg.Parent then bg:Destroy() end
+
+    if not looping then
+        stopNoclipInternal()
+        local h = getHumanoid()
+        if h then h.PlatformStand = false end
+        return
+    end
+
+    -- Disable noclip and let character fall naturally onto WinBlock16
+    stopNoclipInternal()
+    local h = getHumanoid()
+    if h then h.PlatformStand = false end
+
+    -- Physics fall triggers server-side Touched → reward granted
+    task.wait(0.5)
+
+    -- Update counter
+    loopCount += 1
+    if counterLbl then
+        counterLbl.Text = "Loops: " .. loopCount
+    end
+
+    -- Wait before next loop
+    task.wait(CFG.LoopDelay)
+end
+
+local function startLoop()
+    looping   = true
+    loopCount = 0
+    if counterLbl then counterLbl.Text = "Loops: 0" end
+    loopThread = task.spawn(function()
+        while looping do
+            doOneLoop()
+        end
+    end)
+end
+
+local function stopLoop()
+    looping = false
+    -- Clean up any leftover bodies
+    local rp = getRootPart()
+    if rp then
+        for _, v in ipairs(rp:GetChildren()) do
+            if v:IsA("BodyVelocity") or v:IsA("BodyGyro") then v:Destroy() end
+        end
+    end
+    stopNoclipInternal()
+    local hm = getHumanoid()
+    if hm then hm.PlatformStand = false end
+    -- Restore manual features if they were on
+    if flyEnabled    then startFlyInternal()    end
+    if noclipEnabled then startNoclipInternal() end
 end
 
 -- ==============================
@@ -159,8 +282,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent       = game:GetService("CoreGui")
 
 local Main = Instance.new("Frame")
-Main.Size             = UDim2.new(0, 260, 0, 530)
-Main.Position         = UDim2.new(1, -278, 0.5, -265)
+Main.Size             = UDim2.new(0, 260, 0, 640)
+Main.Position         = UDim2.new(1, -278, 0.5, -320)
 Main.BackgroundColor3 = Color3.fromRGB(14, 14, 14)
 Main.BorderSizePixel  = 0
 Main.ClipsDescendants = true
@@ -172,6 +295,7 @@ Border.Color     = Color3.fromRGB(80, 80, 220)
 Border.Thickness = 1.5
 Border.Parent    = Main
 
+-- Title bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size             = UDim2.new(1, 0, 0, 44)
 TitleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 180)
@@ -308,6 +432,49 @@ local function makePill(y, icon, label, color, onToggle)
         sLbl.TextColor3 = state and color or Color3.fromRGB(130, 130, 130)
         badge.Visible   = state
         onToggle(state)
+    end)
+end
+
+-- ==============================
+--      LOOP COUNTER ROW
+-- ==============================
+local function makeCounterRow(y)
+    local row = Instance.new("Frame")
+    row.Size             = UDim2.new(1, -20, 0, 30)
+    row.Position         = UDim2.new(0, 10, 0, y)
+    row.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    row.BorderSizePixel  = 0
+    row.Parent           = Main
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size                 = UDim2.new(0.55, 0, 1, 0)
+    lbl.Position             = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text                 = "Loops: 0"
+    lbl.Font                 = Enum.Font.GothamBold
+    lbl.TextSize             = 12
+    lbl.TextColor3           = Color3.fromRGB(100, 220, 100)
+    lbl.TextXAlignment       = Enum.TextXAlignment.Left
+    lbl.Parent               = row
+
+    counterLbl = lbl  -- global reference for doOneLoop
+
+    local resetBtn = Instance.new("TextButton")
+    resetBtn.Size             = UDim2.new(0, 70, 0, 20)
+    resetBtn.Position         = UDim2.new(1, -76, 0.5, -10)
+    resetBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    resetBtn.Text             = "Reset"
+    resetBtn.TextColor3       = Color3.new(1, 1, 1)
+    resetBtn.Font             = Enum.Font.GothamBold
+    resetBtn.TextSize         = 10
+    resetBtn.BorderSizePixel  = 0
+    resetBtn.Parent           = row
+    Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 4)
+
+    resetBtn.MouseButton1Click:Connect(function()
+        loopCount  = 0
+        lbl.Text   = "Loops: 0"
     end)
 end
 
@@ -475,7 +642,7 @@ local function makePositionSection(startY)
     Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
 
     local listFrame = Instance.new("ScrollingFrame")
-    listFrame.Size                 = UDim2.new(1, -20, 0, 138)
+    listFrame.Size                 = UDim2.new(1, -20, 0, 120)
     listFrame.Position             = UDim2.new(0, 10, 0, startY + 34)
     listFrame.BackgroundColor3     = Color3.fromRGB(20, 20, 20)
     listFrame.BorderSizePixel      = 0
@@ -608,6 +775,7 @@ end
 -- ==============================
 --         BUILD LAYOUT
 -- ==============================
+-- y=50  FEATURES
 section(50, "FEATURES")
 makePill(66, "✈", "FLY", Color3.fromRGB(70, 120, 255), function(on)
     flyEnabled = on
@@ -622,15 +790,29 @@ makePill(124, "👻", "NOCLIP", Color3.fromRGB(180, 60, 220), function(on)
     if on then startNoclipInternal() else stopNoclipInternal() end
 end)
 
-section(187, "FLY SPEED")
-makeSlider(203)
+-- y=187  AUTO WIN
+section(187, "AUTO WIN")
+makePill(203, "🏆", "AUTO WIN (WinBlock16)", Color3.fromRGB(220, 160, 20), function(on)
+    if on then
+        startLoop()
+    else
+        stopLoop()
+    end
+end)
+makeCounterRow(261)
 
-section(288, "SAVE POSITION & TELEPORT")
-makePositionSection(304)
+-- y=302  FLY SPEED
+section(302, "FLY SPEED")
+makeSlider(318)
 
+-- y=402  SAVE POSITION
+section(402, "SAVE POSITION & TELEPORT")
+makePositionSection(418)
+
+-- Key hint
 local hint = Instance.new("TextLabel")
 hint.Size                 = UDim2.new(1, -20, 0, 18)
-hint.Position             = UDim2.new(0, 10, 0, 507)
+hint.Position             = UDim2.new(0, 10, 0, 616)
 hint.BackgroundTransparency = 1
 hint.Text                 = "WASD | Space = up | Ctrl = down | Shift = boost x2.5"
 hint.Font                 = Enum.Font.Gotham
