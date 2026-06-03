@@ -10,6 +10,7 @@
 ]]
 
 local UIS=game:GetService("UserInputService")
+local TweenService=game:GetService("TweenService")
 local HOST=(gethui and gethui()) or game:GetService("CoreGui")
 
 local Lib={}
@@ -57,6 +58,61 @@ local function dragify(handle,target,onClick)
 	handle.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=true;moved=false;ds=i.Position;sp=target.Position end end)
 	handle.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false; if not moved and onClick then onClick() end end end)
 	UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then local d=i.Position-ds; if math.abs(d.X)>4 or math.abs(d.Y)>4 then moved=true end; target.Position=UDim2.new(sp.X.Scale,sp.X.Offset+d.X,sp.Y.Scale,sp.Y.Offset+d.Y) end end)
+end
+
+-- nhãn section nhỏ (chữ accent)
+function Lib.Section(parent,y,text)
+	local l=Instance.new("TextLabel",parent); l.Position=UDim2.new(0,16,0,y); l.Size=UDim2.new(1,-32,0,16); l.BackgroundTransparency=1; l.Font=Enum.Font.GothamBold; l.TextSize=10; l.TextColor3=C.Accent; l.TextXAlignment=Enum.TextXAlignment.Left; l.Text=string.upper(text); return l
+end
+
+-- thẻ nền bo góc
+function Lib.Card(parent,y,h)
+	local f=Instance.new("Frame",parent); f.Position=UDim2.new(0,12,0,y); f.Size=UDim2.new(1,-24,0,h); f.BackgroundColor3=C.Bg3; f.BorderSizePixel=0; Lib.Corner(f,8); return f
+end
+
+-- Toggle dạng pill (dùng chung): o={y,icon,title,sub,color,default,callback}
+function Lib.Toggle(parent,o)
+	local color=o.color or C.Accent
+	local row=Lib.Card(parent,o.y,54)
+	local ib=Instance.new("Frame",row); ib.Position=UDim2.new(0,10,0.5,-17); ib.Size=UDim2.new(0,34,0,34); ib.BackgroundColor3=color; ib.BorderSizePixel=0; Lib.Corner(ib,7)
+	local il=Instance.new("TextLabel",ib); il.Size=UDim2.new(1,0,1,0); il.BackgroundTransparency=1; il.Text=o.icon or "•"; il.Font=Enum.Font.GothamBold; il.TextSize=16; il.TextColor3=Color3.new(1,1,1)
+	local t=Instance.new("TextLabel",row); t.Position=UDim2.new(0,54,0,9); t.Size=UDim2.new(1,-116,0,18); t.BackgroundTransparency=1; t.Text=o.title or ""; t.Font=Enum.Font.GothamBold; t.TextSize=13; t.TextColor3=C.Text; t.TextXAlignment=Enum.TextXAlignment.Left
+	local s=Instance.new("TextLabel",row); s.Position=UDim2.new(0,54,0,30); s.Size=UDim2.new(1,-116,0,14); s.BackgroundTransparency=1; s.Text=o.sub or ""; s.Font=Enum.Font.Gotham; s.TextSize=10; s.TextColor3=C.TextDim; s.TextXAlignment=Enum.TextXAlignment.Left
+	local pill=Instance.new("Frame",row); pill.Position=UDim2.new(1,-54,0.5,-11); pill.Size=UDim2.new(0,44,0,22); pill.BackgroundColor3=Color3.fromRGB(60,60,70); pill.BorderSizePixel=0; Lib.Corner(pill,11)
+	local dot=Instance.new("Frame",pill); dot.Position=UDim2.new(0,3,0.5,-8); dot.Size=UDim2.new(0,16,0,16); dot.BackgroundColor3=Color3.new(1,1,1); dot.BorderSizePixel=0; Lib.Corner(dot,8)
+	local state=o.default or false
+	local function render(anim)
+		local pc=state and color or Color3.fromRGB(60,60,70)
+		local dp=state and UDim2.new(1,-19,0.5,-8) or UDim2.new(0,3,0.5,-8)
+		if anim then TweenService:Create(pill,TweenInfo.new(0.18),{BackgroundColor3=pc}):Play(); TweenService:Create(dot,TweenInfo.new(0.18),{Position=dp}):Play()
+		else pill.BackgroundColor3=pc; dot.Position=dp end
+	end
+	render(false)
+	local btn=Instance.new("TextButton",row); btn.Size=UDim2.new(1,0,1,0); btn.BackgroundTransparency=1; btn.Text=""
+	btn.MouseButton1Click:Connect(function() state=not state; render(true); if o.callback then o.callback(state) end end)
+	return row
+end
+
+-- Slider: o={y,label,min,max,default,callback}
+function Lib.Slider(parent,o)
+	local card=Lib.Card(parent,o.y,60)
+	local lbl=Instance.new("TextLabel",card); lbl.Position=UDim2.new(0,10,0,8); lbl.Size=UDim2.new(0.6,0,0,18); lbl.BackgroundTransparency=1; lbl.Text=o.label or ""; lbl.Font=Enum.Font.GothamBold; lbl.TextSize=12; lbl.TextColor3=C.Text; lbl.TextXAlignment=Enum.TextXAlignment.Left
+	local val=Instance.new("TextLabel",card); val.Position=UDim2.new(0.6,0,0,8); val.Size=UDim2.new(0.4,-10,0,18); val.BackgroundTransparency=1; val.Text=tostring(o.default); val.Font=Enum.Font.GothamBold; val.TextSize=13; val.TextColor3=C.Accent; val.TextXAlignment=Enum.TextXAlignment.Right
+	local track=Instance.new("Frame",card); track.Position=UDim2.new(0,10,0,42); track.Size=UDim2.new(1,-20,0,6); track.BackgroundColor3=Color3.fromRGB(50,55,62); track.BorderSizePixel=0; Lib.Corner(track,3)
+	local pct0=(o.default-o.min)/(o.max-o.min)
+	local fill=Instance.new("Frame",track); fill.Size=UDim2.new(pct0,0,1,0); fill.BackgroundColor3=C.Accent; fill.BorderSizePixel=0; Lib.Corner(fill,3)
+	local thumb=Instance.new("Frame",track); thumb.Position=UDim2.new(pct0,-8,0.5,-8); thumb.Size=UDim2.new(0,16,0,16); thumb.BackgroundColor3=Color3.new(1,1,1); thumb.ZIndex=3; thumb.BorderSizePixel=0; Lib.Corner(thumb,8)
+	local dragging=false
+	local function upd(absX)
+		local pct=math.clamp((absX-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)
+		fill.Size=UDim2.new(pct,0,1,0); thumb.Position=UDim2.new(pct,-8,0.5,-8)
+		local v=math.floor(o.min+pct*(o.max-o.min)); val.Text=tostring(v); if o.callback then o.callback(v) end
+	end
+	track.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=true; upd(i.Position.X) end end)
+	thumb.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=true end end)
+	UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then upd(i.Position.X) end end)
+	UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
+	return card
 end
 
 -- Tạo cửa sổ chuẩn: top bar + sidebar + content + orb thu nhỏ
