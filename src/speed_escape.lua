@@ -1,6 +1,6 @@
 -- TvFruit — +1 Speed Keyboard Escape | Delta Executor Compatible
 -- PlaceId: 118941584817777
--- GUI dùng thư viện theme chung (games/lib/theme.lua) -> đồng bộ màu cyan với mọi game.
+-- GUI uses the shared theme library (games/lib/theme.lua) -> unified cyan look.
 
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
@@ -189,7 +189,7 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 
 -- ============================================================
---          GUI — dùng thư viện theme chung (màu cyan)
+--          GUI — uses the shared theme library (cyan)
 -- ============================================================
 local BASE="https://raw.githubusercontent.com/Tro0405/roblox-scripts/main/games/"
 local Lib=loadstring(game:HttpGet(BASE.."lib/theme.lua",true))()
@@ -206,7 +206,7 @@ Lib.L(home,16,16,"✈  TvFruit",17,C.Accent)
 Lib.L(home,16,44,"Script by Tro0405",11,C.TextDim)
 Lib.L(home,16,66,"Game: +1 Speed Keyboard Escape",12,C.Accent)
 Lib.L(home,16,86,"PlaceId: "..tostring(game.PlaceId),11,C.TextDim)
-Lib.L(home,16,118,"Vào tab Features bật Fly / Noclip. Auto Walk để farm speed tự động.",12,C.TextDim,46)
+Lib.L(home,16,118,"Open the Features tab to enable Fly / Noclip. Use Auto Walk to farm speed automatically.",12,C.TextDim,46)
 
 -- FEATURES
 local feat=win:Tab("Features","✈")
@@ -215,7 +215,7 @@ Lib.Toggle(feat,{y=34,icon="✈",title="Fly",sub="WASD · Space/Ctrl · Shift x2
     flyEnabled=on
     if on then startFlyInternal() else stopFlyInternal(); local hm=getHumanoid(); if hm then hm.PlatformStand=false end end
 end})
-Lib.Toggle(feat,{y=96,icon="👻",title="Noclip",sub="Xuyên mọi bức tường",color=Color3.fromRGB(180,60,220),callback=function(on)
+Lib.Toggle(feat,{y=96,icon="👻",title="Noclip",sub="Pass through all walls",color=Color3.fromRGB(180,60,220),callback=function(on)
     noclipEnabled=on
     if on then startNoclipInternal() else stopNoclipInternal() end
 end})
@@ -223,16 +223,16 @@ end})
 -- AUTO WALK
 local aw=win:Tab("Auto Walk","🚶")
 Lib.Section(aw,12,"Speed Farming")
-Lib.Toggle(aw,{y=34,icon="🚶",title="Auto Walk",sub="Đi vòng tròn farm speed — không cần bàn phím",color=Color3.fromRGB(50,180,100),callback=function(on)
+Lib.Toggle(aw,{y=34,icon="🚶",title="Auto Walk",sub="Walk in circles to farm speed — no keyboard needed",color=Color3.fromRGB(50,180,100),callback=function(on)
     if on then startAutoWalk() else stopAutoWalk() end
 end})
 local awInfo=Lib.Card(aw,100,46)
-Lib.L(awInfo,10,6,"Nhân vật tự đi vòng tròn chậm. Tự bật lại sau khi chết.",11,C.TextDim,36)
+Lib.L(awInfo,10,6,"Character walks in a slow circle automatically. Re-enables after death.",11,C.TextDim,36)
 
 -- AUTO WIN
 local awin=win:Tab("Auto Win","🏆")
 Lib.Section(awin,12,"WinBlock16")
-Lib.Toggle(awin,{y=34,icon="🏆",title="Auto Win",sub="Bay tới WinBlock16 & đáp xuống nhận thưởng",color=Color3.fromRGB(210,150,20),callback=function(on)
+Lib.Toggle(awin,{y=34,icon="🏆",title="Auto Win",sub="Fly to WinBlock16 and land for the reward",color=Color3.fromRGB(210,150,20),callback=function(on)
     if on then startLoop() else stopLoop() end
 end})
 local cRow=Lib.Card(awin,100,38)
@@ -247,7 +247,7 @@ Lib.Slider(setp,{y=34,label="✈ Fly Speed",min=CFG.FlySpeedMin,max=CFG.FlySpeed
 Lib.Section(setp,108,"Save Position & Teleport")
 local saveBtn=Lib.Btn(setp,{Pos=UDim2.new(0,12,0,128),Size=UDim2.new(0,128,0,28),Text="+ Save Position",Color=C.Good,TextSize=12})
 local listF=Lib.Scroll(setp,UDim2.new(0,12,0,164),UDim2.new(1,-24,0,150))
-local emptyL=Lib.L(listF,6,8,"Chưa lưu vị trí nào",11,Color3.fromRGB(110,116,128))
+local emptyL=Lib.L(listF,6,8,"No saved positions yet",11,Color3.fromRGB(110,116,128))
 local function addEntry(idx,name,cf)
     emptyL.Visible=false
     local row=Instance.new("Frame",listF); row.Size=UDim2.new(1,-8,0,30); row.BackgroundColor3=C.Bg3; row.BorderSizePixel=0; row.LayoutOrder=idx; Lib.Corner(row,6)
@@ -271,4 +271,4 @@ win:OnClose(function()
     stopFlyInternal(); stopNoclipInternal(); stopAutoWalk(); stopLoop()
 end)
 win:Show("Home")
-print("[TvFruit] +1 Speed Escape loaded (cyan theme)")
+print("[TvFruit] +1 Speed Escape loaded")

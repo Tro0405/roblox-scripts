@@ -1,5 +1,5 @@
 #!/bin/sh
-# TvFruit: tự obfuscate src/ -> games/ trước mỗi commit
-echo "[pre-commit] obfuscate build src/ -> games/ ..."
-python build.py || { echo "[pre-commit] build THAT BAI, huy commit"; exit 1; }
+# TvFruit: auto-obfuscate src/ -> games/ before each commit
+echo "[pre-commit] obfuscating src/ -> games/ ..."
+python build.py || { echo "[pre-commit] build failed, commit aborted"; exit 1; }
 git add games/grow_a_garden.lua games/speed_escape.lua

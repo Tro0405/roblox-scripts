@@ -1,12 +1,12 @@
 --[[
 	TvFruit — Shared UI Theme & Window Library
-	Mọi script game nạp file này để có GUI THỐNG NHẤT (cùng khung, sidebar, orb, màu cyan).
-	Dùng:
+	Every game script loads this for a UNIFIED look (same frame, sidebar, orb, cyan color).
+	Usage:
 	  local Lib = loadstring(game:HttpGet(".../games/lib/theme.lua", true))()
-	  local win = Lib:Window({Title="Tên Game", Icon="📺"})
+	  local win = Lib:Window({Title="Game Name", Icon="📺"})
 	  local page = win:Tab("Home","🏠")
 	  win:Show("Home")
-	Đổi màu chủ đạo: sửa Lib.Colors.Accent ở dưới -> tất cả game đổi theo.
+	To change the main color: edit Lib.Colors.Accent below -> all games update.
 ]]
 
 local UIS=game:GetService("UserInputService")
@@ -15,7 +15,7 @@ local HOST=(gethui and gethui()) or game:GetService("CoreGui")
 
 local Lib={}
 Lib.Colors={
-	Accent  =Color3.fromRGB(6,206,227),   -- XANH CYAN (màu chủ đạo)
+	Accent  =Color3.fromRGB(6,206,227),   -- CYAN (main color)
 	Bg      =Color3.fromRGB(15,18,22),
 	Bg2     =Color3.fromRGB(23,27,33),
 	Bg3     =Color3.fromRGB(34,39,47),
@@ -28,7 +28,7 @@ local C=Lib.Colors
 
 function Lib.Corner(o,r) local c=Instance.new("UICorner",o); c.CornerRadius=UDim.new(0,r or 6); return c end
 
--- nhãn nhanh: L(parent,x,y,text,size,color,wrapH)
+-- quick label: L(parent,x,y,text,size,color,wrapH)
 function Lib.L(parent,x,y,t,size,col,wrapH)
 	local l=Instance.new("TextLabel",parent); l.BackgroundTransparency=1; l.Position=UDim2.new(0,x,0,y)
 	l.Size=UDim2.new(1,-x-14,0,wrapH or (size+6)); l.Font=Enum.Font.GothamMedium; l.TextSize=size or 12
@@ -37,7 +37,7 @@ function Lib.L(parent,x,y,t,size,col,wrapH)
 	return l
 end
 
--- nút: Btn(parent,{Pos,Size,Text,Color,TextColor,TextSize,Radius})
+-- button: Btn(parent,{Pos,Size,Text,Color,TextColor,TextSize,Radius})
 function Lib.Btn(parent,p)
 	local b=Instance.new("TextButton",parent); b.BorderSizePixel=0; b.AutoButtonColor=true
 	b.BackgroundColor3=p.Color or C.Bg3; b.Position=p.Pos or UDim2.new(0,0,0,0); b.Size=p.Size or UDim2.new(0,100,0,30)
@@ -60,17 +60,17 @@ local function dragify(handle,target,onClick)
 	UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then local d=i.Position-ds; if math.abs(d.X)>4 or math.abs(d.Y)>4 then moved=true end; target.Position=UDim2.new(sp.X.Scale,sp.X.Offset+d.X,sp.Y.Scale,sp.Y.Offset+d.Y) end end)
 end
 
--- nhãn section nhỏ (chữ accent)
+-- small section label (accent text)
 function Lib.Section(parent,y,text)
 	local l=Instance.new("TextLabel",parent); l.Position=UDim2.new(0,16,0,y); l.Size=UDim2.new(1,-32,0,16); l.BackgroundTransparency=1; l.Font=Enum.Font.GothamBold; l.TextSize=10; l.TextColor3=C.Accent; l.TextXAlignment=Enum.TextXAlignment.Left; l.Text=string.upper(text); return l
 end
 
--- thẻ nền bo góc
+-- rounded background card
 function Lib.Card(parent,y,h)
 	local f=Instance.new("Frame",parent); f.Position=UDim2.new(0,12,0,y); f.Size=UDim2.new(1,-24,0,h); f.BackgroundColor3=C.Bg3; f.BorderSizePixel=0; Lib.Corner(f,8); return f
 end
 
--- Toggle dạng pill (dùng chung): o={y,icon,title,sub,color,default,callback}
+-- pill toggle (shared): o={y,icon,title,sub,color,default,callback}
 function Lib.Toggle(parent,o)
 	local color=o.color or C.Accent
 	local row=Lib.Card(parent,o.y,54)
@@ -115,7 +115,7 @@ function Lib.Slider(parent,o)
 	return card
 end
 
--- Tạo cửa sổ chuẩn: top bar + sidebar + content + orb thu nhỏ
+-- Build the standard window: top bar + sidebar + content + minimize orb + close confirm
 function Lib:Window(opts)
 	opts=opts or {}
 	local icon=opts.Icon or "📺"
@@ -137,6 +137,15 @@ function Lib:Window(opts)
 
 	local content=Instance.new("Frame",win); content.Size=UDim2.new(1,-160,1,-46); content.Position=UDim2.new(0,152,0,42); content.BackgroundColor3=C.Bg2; content.BorderSizePixel=0; Lib.Corner(content,8)
 
+	-- close-confirm modal
+	local modal=Instance.new("Frame",gui); modal.Size=UDim2.fromScale(1,1); modal.BackgroundColor3=Color3.new(0,0,0); modal.BackgroundTransparency=0.45; modal.BorderSizePixel=0; modal.Visible=false; modal.Active=true; modal.ZIndex=100
+	local box=Instance.new("Frame",modal); box.Size=UDim2.new(0,320,0,150); box.Position=UDim2.new(0.5,-160,0.5,-75); box.BackgroundColor3=C.Bg2; box.BorderSizePixel=0; box.ZIndex=101; Lib.Corner(box,10)
+	local bstk=Instance.new("UIStroke",box); bstk.Color=C.Accent; bstk.Thickness=1; bstk.Transparency=0.4
+	local mTitle=Instance.new("TextLabel",box); mTitle.Position=UDim2.new(0,0,0,18); mTitle.Size=UDim2.new(1,0,0,24); mTitle.BackgroundTransparency=1; mTitle.Font=Enum.Font.GothamBold; mTitle.TextSize=16; mTitle.TextColor3=C.Accent; mTitle.Text="Close Script?"; mTitle.ZIndex=101
+	local mText=Instance.new("TextLabel",box); mText.Position=UDim2.new(0,16,0,48); mText.Size=UDim2.new(1,-32,0,34); mText.BackgroundTransparency=1; mText.Font=Enum.Font.Gotham; mText.TextSize=12; mText.TextColor3=C.TextDim; mText.TextWrapped=true; mText.Text="Are you sure you want to close TvFruit?"; mText.ZIndex=101
+	local yesB=Lib.Btn(box,{Pos=UDim2.new(0,20,1,-44),Size=UDim2.new(0.5,-30,0,32),Text="Yes, close",Color=C.Danger,TextSize=13}); yesB.ZIndex=102
+	local noB=Lib.Btn(box,{Pos=UDim2.new(0.5,10,1,-44),Size=UDim2.new(0.5,-30,0,32),Text="Cancel",Color=C.Bg3,TextSize=13}); noB.ZIndex=102
+
 	local W={Gui=gui,Window=win,Content=content,_pages={},_nav={}}
 	function W:Show(name)
 		for n,pg in pairs(self._pages) do pg.Visible=(n==name) end
@@ -153,7 +162,9 @@ function Lib:Window(opts)
 	dragify(top,win)
 	dragify(orb,orb,function() win.Visible=true; orb.Visible=false end)
 	minB.MouseButton1Click:Connect(function() win.Visible=false; orb.Visible=true end)
-	clsB.MouseButton1Click:Connect(function() if W._onClose then pcall(W._onClose) end; gui:Destroy() end)
+	clsB.MouseButton1Click:Connect(function() modal.Visible=true end)
+	noB.MouseButton1Click:Connect(function() modal.Visible=false end)
+	yesB.MouseButton1Click:Connect(function() if W._onClose then pcall(W._onClose) end; gui:Destroy() end)
 
 	return W
 end

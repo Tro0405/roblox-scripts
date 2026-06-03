@@ -1,15 +1,15 @@
 --[[
 	TvFruit — Multi-Game Loader (router)
-	Loadstring giữ nguyên:
+	Loadstring (unchanged):
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/Tro0405/roblox-scripts/main/TvFruit.lua", true))()
 
-	Tự nhận PlaceId và load script tương ứng trong thư mục games/.
-	Thêm game mới: tạo games/<ten>.lua rồi thêm 1 dòng vào bảng GAMES bên dưới.
+	Detects the PlaceId and loads the matching script from games/.
+	Add a new game: create games/<name>.lua and add a line to the GAMES table below.
 ]]
 
 local BASE = "https://raw.githubusercontent.com/Tro0405/roblox-scripts/main/games/"
 
--- [PlaceId] = "tên file trong games/"
+-- [PlaceId] = "file name in games/"
 local GAMES = {
 	[118941584817777] = "speed_escape.lua",    -- +1 Speed Keyboard Escape
 	[126884695634066] = "grow_a_garden.lua",   -- Grow a Garden (BizzyBee)
@@ -27,8 +27,8 @@ local placeId = game.PlaceId
 local file = GAMES[placeId]
 
 if not file then
-	notify("Game này chưa được hỗ trợ.\nPlaceId: " .. tostring(placeId), 8)
-	warn("[TvFruit] Chưa hỗ trợ PlaceId " .. tostring(placeId))
+	notify("This game is not supported.\nPlaceId: " .. tostring(placeId), 8)
+	warn("[TvFruit] Unsupported PlaceId " .. tostring(placeId))
 	return
 end
 
@@ -38,17 +38,17 @@ local ok, src = pcall(function()
 end)
 
 if not ok or not src or src == "" then
-	notify("Không tải được script: " .. file, 8)
-	warn("[TvFruit] HttpGet lỗi: " .. tostring(src))
+	notify("Failed to load script: " .. file, 8)
+	warn("[TvFruit] HttpGet error: " .. tostring(src))
 	return
 end
 
 local fn, err = loadstring(src)
 if not fn then
-	notify("loadstring lỗi ở " .. file, 8)
-	warn("[TvFruit] loadstring lỗi: " .. tostring(err))
+	notify("loadstring error in " .. file, 8)
+	warn("[TvFruit] loadstring error: " .. tostring(err))
 	return
 end
 
-notify("Đã nạp " .. file .. " ✓", 4)
+notify("Loaded successfully ✓", 4)
 fn()
