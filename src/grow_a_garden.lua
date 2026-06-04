@@ -57,6 +57,20 @@ local hbb=Instance.new("BillboardGui"); hbb.Size=UDim2.new(0,160,0,40); hbb.Alwa
 local hbl=Instance.new("TextLabel",hbb); hbl.Size=UDim2.new(1,0,1,0); hbl.BackgroundTransparency=1; hbl.Font=Enum.Font.GothamBold; hbl.TextSize=20; hbl.TextColor3=C.Accent; hbl.TextStrokeTransparency=0
 local function highlightSlot(n) local p=slotPart(n); hl.Adornee=p; hbb.Adornee=p; hbl.Text="SLOT "..n end
 
+-- anti-AFK (avoid the 20-minute idle kick)
+local VirtualUser=game:GetService("VirtualUser")
+local antiAfkConn
+local function setAntiAfk(on)
+	if on and not antiAfkConn then
+		antiAfkConn=LP.Idled:Connect(function()
+			VirtualUser:CaptureController()
+			VirtualUser:ClickButton2(Vector2.new())
+		end)
+	elseif (not on) and antiAfkConn then
+		antiAfkConn:Disconnect(); antiAfkConn=nil
+	end
+end
+
 -- window from shared library
 local win=Lib:Window({Title="Grow a Garden", Name="TvFruitGAG", Icon="📺"})
 local gui=win.Gui
@@ -137,6 +151,11 @@ numInput(56,"Delay per roll (sec):",CFG.DELAY,function(v) CFG.DELAY=v end)
 numInput(94,"Max rolls / slot:",CFG.MAX_PER_SLOT,function(v) CFG.MAX_PER_SLOT=math.floor(v) end)
 Lib.L(setPage,16,140,"Low delay = faster rolls but higher kick risk. Keep >= 0.3.",11,Color3.fromRGB(255,150,150),40)
 
+-- PAGE: Misc
+local misc=win:Tab("Misc","🛡")
+Lib.Section(misc,12,"Anti-AFK")
+Lib.Toggle(misc,{y=34,icon="🛡",title="Anti-AFK",sub="Prevent the 20-minute idle kick",color=C.Accent,callback=setAntiAfk})
+
 -- live update current bee on slot buttons
 task.spawn(function()
 	while gui.Parent do
@@ -182,5 +201,5 @@ startB.MouseButton1Click:Connect(function()
 end)
 stopB.MouseButton1Click:Connect(function() getgenv().BeeRunning=false; prog.Text="Stopped" end)
 
-win:OnClose(function() getgenv().BeeRunning=false; pcall(function() hl:Destroy() end); pcall(function() espHost:Destroy() end) end)
+win:OnClose(function() getgenv().BeeRunning=false; setAntiAfk(false); pcall(function() hl:Destroy() end); pcall(function() espHost:Destroy() end) end)
 win:Show("Home")
