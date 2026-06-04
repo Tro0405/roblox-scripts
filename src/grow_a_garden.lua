@@ -9,6 +9,7 @@ local LP=game:GetService("Players").LocalPlayer
 local DataService=require(RS.Modules.DataService)
 local BizzyBee=RS.GameEvents.BizzyBeeEvent
 local PlaceRE,ReplaceRE=BizzyBee.PlaceBeeEggRE,BizzyBee.ReplaceBeeRE
+local EnchantRE,ReplaceEnchantRE=BizzyBee.EnchantBeeRE,BizzyBee.ReplaceEnchantRE
 
 -- load shared theme
 local BASE="https://raw.githubusercontent.com/Tro0405/roblox-scripts/main/games/"
@@ -47,7 +48,22 @@ end
 local function slotPart(n) for _,p in ipairs(workspace:GetChildren()) do if p.Name=="BeeNestHover" and p:GetAttribute("Slot")==n then return p end end end
 local function getSlot(n)
 	local d=DataService:GetData(); local inv=d and d.BeeEventData and d.BeeEventData.BeeInventoryData
-	if inv then for u,e in pairs(inv) do if e.Data and e.Data.Slot==n then return u,e.BeeName end end end
+	if inv then for u,e in pairs(inv) do if e.Data and e.Data.Slot==n then return u,e.BeeName,e.Data.Enchantment,e.Data.State end end end
+end
+
+-- list bee shard tools in backpack: returns { {prefix,count}, ... }
+local function listShards()
+	local out,seen={},{}
+	for _,c in ipairs(LP.Backpack:GetChildren()) do
+		if c:IsA("Tool") then
+			local label=c.Name:match("^(Bee Shard %b[])")
+			if label and not seen[label] then
+				seen[label]=true
+				table.insert(out,{label, tonumber(c.Name:match("x(%d+)")) or 1})
+			end
+		end
+	end
+	return out
 end
 
 -- highlight a hive cell
@@ -156,6 +172,58 @@ local misc=win:Tab("Misc","🛡")
 Lib.Section(misc,12,"Anti-AFK")
 Lib.Toggle(misc,{y=34,icon="🛡",title="Anti-AFK",sub="Prevent the 20-minute idle kick",color=C.Accent,callback=setAntiAfk})
 
+Lib.Section(misc,96,"Auto Bee Shard (all 21 bees)")
+local shardHint=Lib.L(misc,16,114,"Pick a shard type:",11,C.TextDim)
+local shardList=Lib.Scroll(misc,UDim2.new(0,12,0,134),UDim2.new(1,-24,0,104))
+local selectedShard,shardBtns=nil,{}
+for _,sh in ipairs(listShards()) do
+	local label,cnt=sh[1],sh[2]
+	local b=Lib.Btn(shardList,{Size=UDim2.new(1,-8,0,26),Color=C.Bg3,Radius=5}); b.AutoButtonColor=true; b.Font=Enum.Font.GothamMedium; b.TextSize=11; b.TextXAlignment=Enum.TextXAlignment.Left; b.Text="  "..label.."  (x"..cnt..")"
+	shardBtns[label]=b
+	b.MouseButton1Click:Connect(function()
+		selectedShard=label
+		for l,bt in pairs(shardBtns) do bt.BackgroundColor3=(l==label) and Color3.fromRGB(20,90,110) or C.Bg3 end
+		shardHint.Text="Selected: "..label
+	end)
+end
+if not next(shardBtns) then shardHint.Text="No Bee Shard found in backpack" end
+
+local overwrite=false
+local owBtn=Lib.Btn(misc,{Pos=UDim2.new(0,12,0,246),Size=UDim2.new(0,170,0,26),Text="Overwrite existing: OFF",Color=C.Bg3,TextSize=11})
+owBtn.MouseButton1Click:Connect(function() overwrite=not overwrite; owBtn.Text="Overwrite existing: "..(overwrite and "ON" or "OFF"); owBtn.BackgroundColor3=overwrite and C.Accent or C.Bg3; owBtn.TextColor3=overwrite and Color3.fromRGB(10,20,24) or C.Text end)
+
+local shStart=Lib.Btn(misc,{Pos=UDim2.new(0,12,0,280),Size=UDim2.new(0,90,0,28),Text="▶ START",Color=C.Good,TextSize=12})
+local shStop=Lib.Btn(misc,{Pos=UDim2.new(0,108,0,280),Size=UDim2.new(0,90,0,28),Text="■ STOP",Color=C.Danger,TextSize=12})
+local shProg=Lib.L(misc,208,286,"Ready",11,C.TextDim)
+
+getgenv().ShardRunning=false
+shStart.MouseButton1Click:Connect(function()
+	if getgenv().ShardRunning then return end
+	if not selectedShard then shProg.Text="Pick a shard type first!"; return end
+	getgenv().ShardRunning=true
+	task.spawn(function()
+		local applied,outOfShard=0,false
+		for n=1,21 do
+			if not getgenv().ShardRunning then break end
+			local _,bee,ench,state=getSlot(n)
+			if bee and state~="Hatching" then
+				if ench and not overwrite then
+					shProg.Text="Slot "..n..": already enchanted (skip)"
+				else
+					if eggCount(selectedShard)<=0 then shProg.Text="Out of "..selectedShard; outOfShard=true; getgenv().ShardRunning=false; break end
+					if not equipEgg(selectedShard) then shProg.Text="Can't equip shard"; getgenv().ShardRunning=false; break end
+					if ench then ReplaceEnchantRE:FireServer(n) else EnchantRE:FireServer(n) end
+					applied=applied+1; shProg.Text="Slot "..n.." enchanted ("..applied..")"
+					task.wait(CFG.DELAY)
+				end
+			end
+		end
+		getgenv().ShardRunning=false
+		if not outOfShard then shProg.Text="Done — enchanted "..applied.." bees" end
+	end)
+end)
+shStop.MouseButton1Click:Connect(function() getgenv().ShardRunning=false; shProg.Text="Stopped" end)
+
 -- live update current bee on slot buttons
 task.spawn(function()
 	while gui.Parent do
@@ -201,5 +269,5 @@ startB.MouseButton1Click:Connect(function()
 end)
 stopB.MouseButton1Click:Connect(function() getgenv().BeeRunning=false; prog.Text="Stopped" end)
 
-win:OnClose(function() getgenv().BeeRunning=false; setAntiAfk(false); pcall(function() hl:Destroy() end); pcall(function() espHost:Destroy() end) end)
+win:OnClose(function() getgenv().BeeRunning=false; getgenv().ShardRunning=false; setAntiAfk(false); pcall(function() hl:Destroy() end); pcall(function() espHost:Destroy() end) end)
 win:Show("Home")
