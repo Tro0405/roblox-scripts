@@ -212,7 +212,9 @@ shStart.MouseButton1Click:Connect(function()
 				else
 					if eggCount(selectedShard)<=0 then shProg.Text="Out of "..selectedShard; outOfShard=true; getgenv().ShardRunning=false; break end
 					if not equipEgg(selectedShard) then shProg.Text="Can't equip shard"; getgenv().ShardRunning=false; break end
-					if ench then ReplaceEnchantRE:FireServer(n) else EnchantRE:FireServer(n) end
+					EnchantRE:FireServer(n)          -- open the "Enchant this bee?" dialog
+					task.wait(0.25)
+					ReplaceEnchantRE:FireServer(n)   -- auto-confirm (apply the equipped shard)
 					applied=applied+1; shProg.Text="Slot "..n.." enchanted ("..applied..")"
 					task.wait(CFG.DELAY)
 				end
