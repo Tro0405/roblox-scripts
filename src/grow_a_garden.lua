@@ -267,7 +267,19 @@ startB.MouseButton1Click:Connect(function()
 		if not stoppedNoEgg then prog.Text="Done "..done.."/"..#list.." slots" end
 	end)
 end)
-stopB.MouseButton1Click:Connect(function() getgenv().BeeRunning=false; prog.Text="Stopped" end)
+stopB.MouseButton1Click:Connect(function()
+	getgenv().BeeRunning=false
+	targets={}            -- clear all slot assignments
+	selectedSlot=nil
+	for n=1,21 do
+		local _,cur=getSlot(n)
+		slotBtns[n].Text="  Slot "..n..(cur and (" ["..cur.."]") or "")
+		slotBtns[n].TextColor3=C.Text      -- back to white
+		slotBtns[n].BackgroundColor3=C.Bg3 -- clear selection highlight
+	end
+	hint.Text="Select a slot, then a bee:"
+	prog.Text="Stopped"
+end)
 
 win:OnClose(function() getgenv().BeeRunning=false; getgenv().ShardRunning=false; setAntiAfk(false); pcall(function() hl:Destroy() end); pcall(function() espHost:Destroy() end) end)
 win:Show("Home")
